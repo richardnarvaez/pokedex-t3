@@ -13,10 +13,10 @@ const PokemonCard = ({ pokemon }: { pokemon: PokemonListItem }) => {
           <Image
             src={"/images/bg.jpg"}
             alt={pokemon.name}
-            layout="cover"
-            width={300}
-            height={700}
-            className="absolute inset-0 h-full w-full rounded-md opacity-40"
+            fill
+            objectFit="cover"
+            className="absolute inset-0 h-full "
+            style={{ filter: "blur(10px)", opacity: 0.4, margin: "8px" }}
           />
         )}
         {pokemon.nameJP && (
