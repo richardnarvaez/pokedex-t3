@@ -1,47 +1,56 @@
 import Link from "next/link";
 import Image from "next/image";
-import { getGradientColor } from "../types/pokemon.type";
+import { PokemonListItem, getGradientColor } from "../types/pokemon.type";
 
-interface PokemonCardProps {
-  pokemon: {
-    id: number;
-    name: string;
-    types: string[];
-    sprite: string;
-    generation: number;
-  };
-}
-
-const PokemonCard = ({ pokemon }: PokemonCardProps) => {
+const PokemonCard = ({ pokemon }: { pokemon: PokemonListItem }) => {
   return (
     <Link
       href={`/pokemon/${pokemon.id}`}
-      className="relative block w-full aspect-[3/4] transform rounded-lg border border-gray-200 shadow transition-all hover:scale-105 hover:shadow-lg"
+      className="relative block aspect-[3/4] w-full transform overflow-hidden rounded-lg border border-gray-200 shadow transition-all hover:scale-105 hover:shadow-lg"
     >
-      <div className="absolute inset-0 p-4">
-        <div className={`bg-gradient-to-b ${getGradientColor(pokemon.types[0] ?? '')} to-transparent absolute top-0 right-0 left-0 h-[100px] rounded-md m-2`}>
-          <p className="text-black/10 text-[80px] font-semibold font-mono text-center">
+      <div className="absolute inset-0 p-2">
+        {pokemon.name.includes("-") && (
+          <Image
+            src={"/images/bg.jpg"}
+            alt={pokemon.name}
+            layout="cover"
+            width={300}
+            height={700}
+            className="absolute inset-0 h-full w-full rounded-md opacity-40"
+          />
+        )}
+        {pokemon.nameJP && (
+          <span className="absolute bottom-24 left-0 right-0 transform whitespace-nowrap text-center text-[150px] opacity-5">
+            {pokemon.nameJP}
+          </span>
+        )}
+        <div
+          className={`bg-gradient-to-b ${getGradientColor(pokemon.types[0] ?? "")} absolute left-0 right-0 top-0 m-2 h-[100px] rounded-md to-transparent`}
+        >
+          <p className="text-center font-mono text-[80px] font-semibold text-gray-900/20">
             {String(pokemon.id).padStart(4, "0")}
           </p>
         </div>
         <div className="flex h-full flex-col items-center justify-between">
-          <div className="relative h-32 w-32 mt-16">
+          <div className="relative mt-16 h-32 w-32">
             <Image
-              src={pokemon.sprite}
+              src={pokemon.sprite || "/pokeball.svg"}
               alt={pokemon.name}
               fill
               sizes="128px"
               className="object-contain"
             />
           </div>
-          {pokemon.name.includes('-') && <span className="text-red-500 font-semibold text-xs border border-red-500 rounded-full px-2 py-1 uppercase">Especial</span>}
-                 
-          <div className="flex flex-col items-center">
+          {pokemon.name.includes("-") && (
+            <span className="z-10 rounded-full border border-red-500 bg-white px-2 py-1 text-xs font-semibold uppercase text-red-500">
+              Especial
+            </span>
+          )}
+
+          <div className="flex w-full flex-col items-center">
             <h2 className="text-xl font-semibold capitalize">
-              {pokemon.name.includes('-') ? (
-                <>
-                  {pokemon.name.replace('-', ' ')}
-                </>
+              {pokemon.name.includes("-") ? (
+                <>{pokemon.name.replace("-", " ")}</>
               ) : (
                 pokemon.name
               )}
@@ -49,14 +58,16 @@ const PokemonCard = ({ pokemon }: PokemonCardProps) => {
             <div className="mt-2 flex gap-2">
               {pokemon.types.map((type) => (
                 <span
-                  key={type}
-                  className="rounded-full bg-black/10 px-2 py-1 px-4 text-sm capitalize"
+                  key={pokemon.id + "-" + type}
+                  className="rounded-full bg-black/10 px-4 py-1 text-sm capitalize"
                 >
                   {type}
                 </span>
               ))}
             </div>
-            <div className="mt-2 text-sm border-t border-gray-200 pt-2 w-full text-center mt-2">Generación {pokemon.generation}</div>
+            <div className="mt-2 w-full border-t border-gray-200 pt-3 text-center text-sm">
+              Generación {pokemon.generation}
+            </div>
           </div>
         </div>
       </div>
@@ -64,4 +75,4 @@ const PokemonCard = ({ pokemon }: PokemonCardProps) => {
   );
 };
 
-export default PokemonCard; 
+export default PokemonCard;
