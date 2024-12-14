@@ -37,13 +37,11 @@ export const pokemonRouter = createTRPCRouter({
             })
           );
           filteredNames = filteredNames.filter(p => genPokemonIds.has(p.id));
-          console.log({filteredNames});
         }
 
         // Apply type filter
         if (input.type) {
           const typeJson = await pokeApi.getPokemonByType(input.type) as TypeResponse;
-          console.log({typeJson: typeJson.pokemon[0]?.pokemon});
           const typePokemonIds = new Set(
             typeJson.pokemon.map(p => {
               const id = p.pokemon.url.split("/").slice(-2, -1)[0];
@@ -62,11 +60,10 @@ export const pokemonRouter = createTRPCRouter({
         }
 
         // If we have any filters, get evolution chains for filtered Pokemon
-        if (input.search) { // input.type || input.generation
+        if (input.search) { // && !input.type && !input.generation
           const evolutionSets = await Promise.all(
             filteredNames.map(async (pokemon) => {
               try {
-                console.log({pokemon});
                 const details = await pokeApi.getPokemonDetails(pokemon.id);
                 if (!details) return [];
 
@@ -115,25 +112,27 @@ export const pokemonRouter = createTRPCRouter({
           paginatedNames.map(async ({ id }): Promise<PokemonListItem | null> => {
             try {
               const details = await pokeApi.getPokemonDetails(id);
+              // console.log({details});
               if (!details) return null;
 
               try {
-                // Para Pokémon con formas especiales, usamos el ID base
                 const baseId = details.name.includes('-') 
                   ? await getBaseSpeciesId(details.name.split('-')[0])
                   : details.id;
                 
                 const species = await pokeApi.getPokemonSpecies(baseId);
                 
+                const jpName = species.names.find((n: { language: { name: string } }) => n.language.name === 'ja-Hrkt');
+                
                 return {
                   id: details.id,
                   name: details.name,
+                  nameJP: jpName?.name ?? "",
                   types: details.types.map((t: { type: { name: string } }) => t.type.name),
                   sprite: details.sprites.front_default,
                   generation: parseInt(species.generation.url.split("/").slice(-2, -1)[0]),
                 };
               } catch (error) {
-                // Si falla al obtener species, usamos valores por defecto
                 console.warn(`Failed to get species for ${details.name}, using fallback values`);
                 return {
                   id: details.id,
@@ -149,9 +148,10 @@ export const pokemonRouter = createTRPCRouter({
             }
           })
         );
-        // console.log({pokemonDetails});
+
         // const validPokemonDetails = pokemonDetails.filter((p): p is PokemonListItem => p !== null);
         // console.log({validPokemonDetails});
+
         return {
           items: pokemonDetails,
           nextCursor: endIndex < filteredNames.length ? endIndex : undefined,

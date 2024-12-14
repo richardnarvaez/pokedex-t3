@@ -1,6 +1,7 @@
 export interface Pokemon {
   id: number;
   name: string;
+  nameJP?: string;
   types: string[];
   generation: number;
   evolution_chain?: number;
@@ -11,6 +12,19 @@ export interface PokemonListResponse {
   count: number;
   results: Pokemon[];
 }
+
+export interface Evolution {
+  species: {
+    name: string;
+    url: string;
+  };
+  sprite: string;
+}
+
+export interface Stat {
+  name: string;
+  value: number;
+} 
 
 export const TYPE_COLORS = {
   water: "from-blue-400/20",
@@ -30,6 +44,7 @@ export const getGradientColor = (type: string) => {
 export interface PokemonListItem {
   id: number;
   name: string;
+  nameJP?: string;
   types: string[];
   sprite: string;
   generation: number;
