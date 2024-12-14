@@ -20,14 +20,13 @@ npm run dev
 
 The project will be running on [http://localhost:3000](http://localhost:3000).
 
-Stack:
+## Stack:
 - [Next.js](https://nextjs.org)
 - [Tailwind CSS](https://tailwindcss.com)
 - [tRPC](https://trpc.io)
 - [PokeAPI](https://pokeapi.co)
 
 Screenshots:
-
-![pokedex](./screenshots/pokedex.png)
-
-![pokemon](./screenshots/pokemon.png)
+| List | Details |
+| :---: | :---: |
+|![pokedex](./screenshots/screenshot-1.png) | ![pokemon](./screenshots/screenshot-2.png) |
