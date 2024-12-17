@@ -1,14 +1,64 @@
 import Link from "next/link";
 import Image from "next/image";
 import { PokemonListItem, getGradientColor } from "../types/pokemon.type";
+import { useRef, useState } from "react";
 
 const PokemonCard = ({ pokemon }: { pokemon: PokemonListItem }) => {
+  const divRef = useRef<HTMLDivElement>(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [opacity, setOpacity] = useState(0);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!divRef.current || isFocused) return;
+
+    const div = divRef.current;
+    const rect = div.getBoundingClientRect();
+    setPosition({ x: e.clientY - rect.top, y: e.clientX - rect.left });
+  };
+
+  const handleFocus = () => {
+    setIsFocused(true);
+    setOpacity(1);
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    setOpacity(0);
+  };
+
+  const handleMouseEnter = () => {
+    setOpacity(1);
+  };
+
+  const handleMouseLeave = () => {
+    setOpacity(0);
+  };
+
   return (
     <Link
       href={`/pokemon/${pokemon.id}`}
       className="relative block aspect-[3/4] w-full transform overflow-hidden rounded-lg border border-gray-200 shadow transition-all hover:scale-105 hover:shadow-lg"
     >
-      <div className="absolute inset-0 p-2">
+      <div
+        ref={divRef}
+        onMouseMove={handleMouseMove}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className="absolute inset-0 p-2"
+      >
+        {pokemon.name.includes("-") && (
+          <div
+            className="pointer-events-none absolute -inset-px z-50 opacity-0 transition duration-300"
+            style={{
+              opacity,
+              background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, rgba(255,255,255,.3), rgba(0,0,0,.2) 100%)`,
+            }}
+          />
+        )}
+
         {pokemon.name.includes("-") && (
           <Image
             src={"/images/bg.jpg"}
@@ -19,6 +69,7 @@ const PokemonCard = ({ pokemon }: { pokemon: PokemonListItem }) => {
             style={{ filter: "blur(10px)", opacity: 0.4, margin: "8px" }}
           />
         )}
+
         {pokemon.nameJP && (
           <span className="absolute bottom-24 left-0 right-0 transform whitespace-nowrap text-center text-[150px] opacity-5">
             {pokemon.nameJP}
