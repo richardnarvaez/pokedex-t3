@@ -1,10 +1,37 @@
-import { type NextPage } from "next";
+import { type NextPage, type GetStaticProps, type GetStaticPaths } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { api } from "../../utils/pokemon.api";
-import type { Evolution } from "../../types/pokemon.type";
+import type { Evolution, PokemonStat } from "../../types/pokemon.type";
 import Image from "next/image";
+import { helpers } from "../../server/helpers";
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  // Get first 151 Pokemon for static generation
+  return {
+    // Genera los primeros 151 Pokémon en build time
+    paths: Array.from({ length: 50 }, (_, i) => ({
+      params: { id: String(i + 1) },
+    })),
+    fallback: "blocking",
+  };
+};
+
+export const getStaticProps: GetStaticProps = async (context) => {
+  const id = context.params?.id;
+  if (!id || Array.isArray(id)) throw new Error("Invalid id");
+
+  // Prefetch the pokemon data
+  await helpers.pokemon.getPokemonById.prefetch(parseInt(id));
+
+  return {
+    props: {
+      trpcState: helpers.dehydrate(),
+    },
+    revalidate: 3600,
+  };
+};
 
 const PokemonDetail: NextPage = () => {
   const router = useRouter();
@@ -12,9 +39,6 @@ const PokemonDetail: NextPage = () => {
 
   const { data: pokemon, isLoading } = api.pokemon.getPokemonById.useQuery(
     parseInt(id as string),
-    {
-      enabled: !!id,
-    },
   );
 
   return (
@@ -99,7 +123,7 @@ const PokemonDetail: NextPage = () => {
                   <div className="relative h-48 w-48 overflow-hidden rounded-lg border border-gray-200">
                     <Image
                       src={pokemon?.sprite || "/pokeball.svg"}
-                      alt={pokemon?.name}
+                      alt={pokemon?.name || ""}
                       fill
                       sizes="192px"
                       className="object-contain"
@@ -151,7 +175,7 @@ const PokemonDetail: NextPage = () => {
                     Estadísticas
                   </h2>
                   <div className="space-y-4">
-                    {pokemon?.stats.map((stat: any) => (
+                    {pokemon?.stats.map((stat: PokemonStat) => (
                       <div
                         key={stat.name}
                         className="grid grid-cols-8 items-center gap-4"
@@ -184,6 +208,7 @@ const PokemonDetail: NextPage = () => {
                       <Link
                         key={evo.species.name}
                         href={`/pokemon/${evo.species.url.split("/").slice(-2, -1)[0]}`}
+                        replace
                         className={`text-center ${
                           evo.species.name === pokemon?.name
                             ? "pointer-events-none opacity-50"

@@ -1,40 +1,46 @@
-import { type NextPage } from "next";
+import { type NextPage, type GetStaticProps } from "next";
 import Head from "next/head";
-import { useRouter } from "next/router";
-import { useState, useEffect, Fragment } from "react";
 import { api } from "../utils/pokemon.api";
-import PokemonCard from "../components/pokemon.item";
-import { ChevronIcon } from "../components/Icons/chevron.icon";
-import { SearchIcon } from "../components/Icons/search.icon";
+import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
+import { useFilters } from "../hooks/useFilters";
+import { helpers } from "../server/helpers";
+import { ErrorMessage } from "../components/error.message";
+import { Toolbar } from "../components/toolbar";
+import { LoadingMessage } from "../components/loading.message";
+import { PokemonList } from "../components/pokemon.list";
+import { useRouter } from "next/router";
 
-const POKEMON_LENGTH_GENERATIONS = 9;
-const POKEMON_TYPES = [
-  "normal",
-  "fire",
-  "water",
-  "electric",
-  "grass",
-  "ice",
-  "fighting",
-  "poison",
-  "ground",
-  "flying",
-  "psychic",
-  "bug",
-  "rock",
-  "ghost",
-  "dragon",
-  "dark",
-  "steel",
-  "fairy",
-];
+export const getStaticProps: GetStaticProps = async () => {
+  // Siempre precargamos los primeros 100 Pokémon
+  await helpers.pokemon.getPokemons.prefetch({
+    limit: 100,
+    cursor: 0,
+  });
 
-const Home: NextPage = () => {
-  const router = useRouter();
-  const [search, setSearch] = useState("");
-  const [selectedType, setSelectedType] = useState("");
-  const [selectedGen, setSelectedGen] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  return {
+    props: {
+      trpcState: helpers.dehydrate(),
+    },
+    revalidate: 3600 * 24, // 24 horas
+  };
+};
+
+const Home: NextPage = ({ trpcState }: any) => {
+  const {
+    hasFilters: hf,
+    search,
+    setSearch,
+    selectedType,
+    setSelectedType,
+    selectedGen,
+    setSelectedGen,
+    debouncedSearch,
+    updateFilters,
+  } = useFilters();
+
+  const hasFilters = hf || !!(debouncedSearch || selectedType || selectedGen);
+  const shouldUseInitialData =
+    !hasFilters && trpcState?.json?.queries?.[0]?.state?.data;
 
   const {
     data,
@@ -54,64 +60,22 @@ const Home: NextPage = () => {
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
       keepPreviousData: true,
+      staleTime: !hasFilters ? Infinity : 0,
+      refetchOnWindowFocus: false,
+      initialData: shouldUseInitialData
+        ? {
+            pages: [trpcState.json.queries[0].state.data],
+            pageParams: [0],
+          }
+        : undefined,
     },
   );
 
-  useEffect(() => {
-    const { q, type, gen } = router.query;
-    if (typeof q === "string") setSearch(q);
-    if (typeof type === "string") setSelectedType(type);
-    if (typeof gen === "string") setSelectedGen(gen);
-  }, [router.query]);
-
-  const updateFilters = (
-    newSearch?: string,
-    newType?: string,
-    newGen?: string,
-  ) => {
-    const query: { q?: string; type?: string; gen?: string } = {};
-    if (newSearch?.trim()) query.q = newSearch;
-    if (newType?.trim()) query.type = newType;
-    if (newGen?.trim()) query.gen = newGen;
-
-    void router.push(
-      {
-        pathname: router.pathname,
-        query,
-      },
-      undefined,
-      { shallow: true },
-    );
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 1000); // 1s de espera Debounced
-    return () => clearTimeout(timer);
-  }, [search]);
-
   // Infinite Scroll
-  useEffect(() => {
-    const onScroll = () => {
-      const { scrollHeight, scrollTop, clientHeight } =
-        document.documentElement;
-      const isNearBottom = scrollHeight - scrollTop <= clientHeight * 1.5;
-
-      if (isNearBottom && hasNextPage && !isFetchingNextPage) {
-        console.log("Fetching next page...");
-        void fetchNextPage();
-      }
-    };
-
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  useInfiniteScroll(hasNextPage, isFetchingNextPage, fetchNextPage);
 
   if (error) {
-    return (
-      <div className="p-8 text-center text-2xl text-white">
-        Error al cargar los Pokémon: {error.message}
-      </div>
-    );
+    return <ErrorMessage message={error.message} />;
   }
 
   return (
@@ -123,75 +87,23 @@ const Home: NextPage = () => {
       </Head>
       <main className="min-h-screen bg-white px-4 py-8">
         <div className="container mx-auto">
-          <h1 className="mb-8 text-center text-4xl font-bold tracking-tight text-gray-900">
-            Poké<span className="text-blue-600">dex</span>
-          </h1>
-
-          <div className="sticky top-0 z-50 mb-2 flex flex-col gap-4 border-b bg-white py-4 md:flex-row md:justify-between">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Buscar Pokémon..."
-                className="h-10 rounded-md border border-gray-200 bg-white py-2 pl-12 pr-4 text-sm ring-offset-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-950 focus:ring-offset-2"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  updateFilters(e.target.value, selectedType, selectedGen);
-                }}
-              />
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 border-r pr-2 text-gray-500">
-                <SearchIcon width={18} height={18} />
-              </span>
-            </div>
-            <div className="flex gap-4">
-              <div className="relative">
-                <select
-                  title="Filtrar por tipo"
-                  value={selectedType}
-                  onChange={(e) => {
-                    setSelectedType(e.target.value);
-                    updateFilters(search, e.target.value, selectedGen);
-                  }}
-                  className="h-10 w-[200px] appearance-none rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white focus:outline-none focus:ring-2 focus:ring-gray-950 focus:ring-offset-2"
-                >
-                  <option value="">Todos los tipos</option>
-                  {POKEMON_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
-                    </option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
-                  <ChevronIcon />
-                </span>
-              </div>
-
-              <div className="relative">
-                <select
-                  title="Filtrar por generación"
-                  value={selectedGen}
-                  onChange={(e) => {
-                    setSelectedGen(e.target.value);
-                    updateFilters(search, selectedType, e.target.value);
-                  }}
-                  className="h-10 w-[232px] appearance-none rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white focus:outline-none focus:ring-2 focus:ring-gray-950 focus:ring-offset-2"
-                >
-                  <option value="">Todas las generaciones</option>
-                  {Array.from(
-                    { length: POKEMON_LENGTH_GENERATIONS },
-                    (_, i) => (
-                      <option key={i + 1} value={String(i + 1)}>
-                        Generación {i + 1}
-                      </option>
-                    ),
-                  )}
-                </select>
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
-                  <ChevronIcon />
-                </span>
-              </div>
-            </div>
-          </div>
+          <Toolbar
+            search={search}
+            selectedType={selectedType}
+            selectedGen={selectedGen}
+            onSearchChange={(value) => {
+              setSearch(value);
+              updateFilters(value, selectedType, selectedGen);
+            }}
+            onTypeChange={(value) => {
+              setSelectedType(value);
+              updateFilters(search, value, selectedGen);
+            }}
+            onGenChange={(value) => {
+              setSelectedGen(value);
+              updateFilters(search, selectedType, value);
+            }}
+          />
 
           <div className="mb-2 flex h-6 justify-center">
             {isFetching && (
@@ -200,31 +112,15 @@ const Home: NextPage = () => {
           </div>
 
           {isLoading ? (
-            <div className="text-center text-2xl text-gray-800">
-              Cargando Pokémon...
-            </div>
+            <LoadingMessage
+              message="Cargando Pokémon..."
+              className="text-center text-xl text-gray-800"
+            />
           ) : (
-            <div className="grid grid-cols-1 gap-6 px-2 md:grid-cols-3 lg:grid-cols-4">
-              {data?.pages
-                .flatMap((page) => page.items)
-                .map((pokemon) => (
-                  <Fragment key={pokemon?.id}>
-                    {pokemon?.id && <PokemonCard pokemon={pokemon} />}
-                  </Fragment>
-                ))}
-              {data?.pages[0]?.items.length === 0 && (
-                <div className="col-span-full text-center text-xl text-gray-800">
-                  No se encontraron Pokémon con los filtros seleccionados
-                </div>
-              )}
-            </div>
+            <PokemonList pages={data?.pages ?? []} />
           )}
 
-          {isFetchingNextPage && (
-            <div className="mt-8 text-center text-sm text-gray-500">
-              Cargando más Pokémon...
-            </div>
-          )}
+          {isFetchingNextPage && <LoadingMessage />}
         </div>
       </main>
     </>
