@@ -8,7 +8,6 @@ import { ErrorMessage } from "../components/error.message";
 import { Toolbar } from "../components/toolbar";
 import { LoadingMessage } from "../components/loading.message";
 import { PokemonList } from "../components/pokemon.list";
-import { useRouter } from "next/router";
 
 export const getStaticProps: GetStaticProps = async () => {
   // Siempre precargamos los primeros 100 Pokémon
@@ -27,7 +26,7 @@ export const getStaticProps: GetStaticProps = async () => {
 
 const Home: NextPage = ({ trpcState }: any) => {
   const {
-    hasFilters: hf,
+    hasFilters,
     search,
     setSearch,
     selectedType,
@@ -38,7 +37,6 @@ const Home: NextPage = ({ trpcState }: any) => {
     updateFilters,
   } = useFilters();
 
-  const hasFilters = hf || !!(debouncedSearch || selectedType || selectedGen);
   const shouldUseInitialData =
     !hasFilters && trpcState?.json?.queries?.[0]?.state?.data;
 
@@ -70,6 +68,8 @@ const Home: NextPage = ({ trpcState }: any) => {
         : undefined,
     },
   );
+
+  console.log({ data });
 
   // Infinite Scroll
   useInfiniteScroll(hasNextPage, isFetchingNextPage, fetchNextPage);
