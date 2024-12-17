@@ -72,3 +72,24 @@ export interface PokemonNameWithId {
   name: string;
   id: number;
 }
+
+export interface PokemonStat {
+  name: string;
+  value: number;
+}
+
+export interface PokemonDetails extends PokemonListItem {
+  stats: PokemonStat[];
+  evolution_chain: Evolution[];
+}
+
+export interface PokemonST {
+  id: number;
+  name: string;
+  nameJP?: string;
+  types: string[];
+  sprite: string;
+  generation: number;
+  evolution_chain: Evolution[];
+  stats: PokemonStat[];
+}
